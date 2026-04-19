@@ -1,0 +1,80 @@
+server:
+  port: 8080
+
+spam-detector:
+  thresholds:
+    spam: 0.6
+    suspicious: 0.3
+    blacklist-domain-score: 1.0
+    blacklist-word-boost: 0.10
+    word-lists-weight: 0.10
+    word-patterns-weight: 0.10
+
+  whitelist-domains:
+    - tuta.com
+    - gmail.com
+    - hotmail.com
+
+  blacklist-domains:
+    - evil.test
+    - offshore.test
+    - spamhaus.test
+    - phishing.example
+
+  blacklist-words:
+    - "click here"
+    - "verify now"
+    - "act now"
+    - "limited time offer"
+    - "without a prescription"
+    - "no prescription required"
+    - "100% guaranteed"
+    - "risk free"
+    - "claim your prize"
+    - "you have been selected"
+    - "account suspended"
+    - "unauthorized login"
+    - "security alert"
+    - "action required"
+    - "unusual activity"
+    - "final notice"
+    - "billing failure"
+    - "passive income"
+    - "double your"
+    - "investment opportunity"
+    - "bitcoin profit"
+    - "crypto gains"
+    - "instant payout"
+    - "work from home"
+    - "hidden fees"
+    - "gift card"
+    - "winner"
+    - "voucher"
+    - "entry fee"
+    - "lucky recipient"
+    - "reward points"
+    - "cheap"
+    - "discounted"
+    - "delivery failure"
+    - "failed delivery"
+    - "shipping address update"
+    - "package held"
+    - "parcel tracking"
+    - "customs fee"
+    - "unpaid duty"
+    - "inheritance"
+    - "beneficiary"
+    - "urgent bank transfer"
+    - "investment platform"
+    - "overdue payment"
+    - "shared a document with you"
+    - "e-signature required"
+    - "password expires in"
+    - "security key added"
+    - "recover your account"
+    - "new device sign-in"
+
+logging:
+  level:
+    com.detector: DEBUG
+    root: INFO
