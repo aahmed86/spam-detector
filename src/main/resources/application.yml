@@ -3,12 +3,20 @@ server:
 
 spam-detector:
   thresholds:
-    spam: 0.6
-    suspicious: 0.3
+    spam: 0.60
+    suspicious: 0.30
     blacklist-domain-score: 1.0
     blacklist-word-boost: 0.10
-    word-lists-weight: 0.10
-    word-patterns-weight: 0.10
+    shingle-size: 2
+    sender-flood: 3
+    similarity: 0.20
+    word-similarity: 0.50
+    word-density: 0.10
+    word-lists: 0.10
+    word-patterns: 0.15
+    sender-flood-boost: 0.15
+    single-mail-word-lists: 0.30
+    single-mail-word-patterns: 0.70
 
   whitelist-domains:
     - tuta.com
@@ -20,6 +28,9 @@ spam-detector:
     - offshore.test
     - spamhaus.test
     - phishing.example
+    - bad.io
+    - scam.io
+    - evil.com
 
   blacklist-words:
     - "click here"
