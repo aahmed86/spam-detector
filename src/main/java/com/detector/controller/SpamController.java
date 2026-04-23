@@ -13,6 +13,7 @@ import java.util.List;
  * <h6>Endpoints</h6>
  * <pre>
  * POST   /api/spam/check   Check a single email
+ * POST   /api/spam/analyze   Check batch of emails
  * </pre>
  */
 @RestController
