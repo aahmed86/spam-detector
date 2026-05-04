@@ -40,8 +40,6 @@ public class SpamScoringService {
     }
 
     public ScoredEmail analyzeEmailScore(EmailInput email) {
-        List<String> flags = new ArrayList<>();
-
         String domain = extractDomain(email.sender());
         if (isWhitelisted(domain)) {
             return new ScoredEmail(email, 0.0, List.of("domain-whitelisted"));
@@ -51,20 +49,11 @@ public class SpamScoringService {
             return new ScoredEmail(email, thresholds.getBlacklistDomainScore(), List.of("domain-blacklisted: " + domain));
         }
 
-        List<String> matchedPatterns = patternRegistry.matchingPatterns(email.body());
-        double patternBoost = patternRegistry.totalBoost(email.body());
-        matchedPatterns.forEach(p -> flags.add("pattern: " + p));
+        TextSignals signals = extractSignals(email.body());
 
-        double keywordBoost = 0.0;
-        String lowerBody = email.body().toLowerCase();
-        for (String kw : listsConfig.getBlacklistWords()) {
-            if (lowerBody.contains(kw.toLowerCase())) {
-                keywordBoost = Math.min(keywordBoost + thresholds.getBlacklistWordBoost(), 1.0);
-                flags.add("keyword: " + kw);
-            }
-        }
+        List<String> flags = new ArrayList<>(signals.flags());
 
-        double rawScore = thresholds.getSingleMailWordPatterns() * patternBoost + thresholds.getSingleMailWordLists() * keywordBoost;
+        double rawScore = thresholds.getSingleMailWordPatterns() * signals.patternBoost() + thresholds.getSingleMailWordLists() * signals.keywordBoost();
         return new ScoredEmail(email, saturate(rawScore), flags);
     }
 
@@ -82,7 +71,7 @@ public class SpamScoringService {
 
         List<Set<String>> shingleSets = emails.stream()
                 .map(e -> createNormalizedShingles(e.body()))
-                .collect(Collectors.toList());
+                .toList();
 
         Map<String, Long> senderCounts = emails.stream()
                 .collect(Collectors.groupingBy(e -> extractDomain(e.sender()), Collectors.counting()));
@@ -92,7 +81,6 @@ public class SpamScoringService {
         List<ScoredEmail> results = new ArrayList<>();
         for (int i = 0; i < emails.size(); i++) {
             EmailInput email = emails.get(i);
-            List<String> flags = new ArrayList<>();
 
             String domain = extractDomain(email.sender());
             if (isWhitelisted(domain)) {
@@ -105,18 +93,9 @@ public class SpamScoringService {
                 continue;
             }
 
-            List<String> matchedPatterns = patternRegistry.matchingPatterns(email.body());
-            double patternBoost = patternRegistry.totalBoost(email.body());
-            matchedPatterns.forEach(p -> flags.add("pattern: " + p));
+            TextSignals signals = extractSignals(email.body());
 
-            double keywordBoost = 0.0;
-            String lowerBody = email.body().toLowerCase();
-            for (String kw : listsConfig.getBlacklistWords()) {
-                if (lowerBody.contains(kw.toLowerCase())) {
-                    keywordBoost = Math.min(keywordBoost + thresholds.getBlacklistWordBoost(), 1.0);
-                    flags.add("keyword: " + kw);
-                }
-            }
+            List<String> flags = new ArrayList<>(signals.flags());
 
             double maxSimilarity = 0.0;
             int similarCount = 0;
@@ -143,15 +122,19 @@ public class SpamScoringService {
             }
 
             double rawScore = thresholds.getWordSimilarity() * maxSimilarity + thresholds.getWordDensity() * clusterDensity
-                    + thresholds.getWordPatterns() * patternBoost + thresholds.getWordLists() * keywordBoost + floodBoost;
+                    + thresholds.getWordPatterns() * signals.patternBoost() + thresholds.getWordLists() * signals.keywordBoost() + floodBoost;
             results.add(new ScoredEmail(email, saturate(rawScore), flags));
         }
         return results;
     }
 
     private String extractDomain(String sender) {
-        int at = sender != null ? sender.indexOf('@') : -1;
-        return at >= 0 ? sender.substring(at + 1).toLowerCase() : (sender != null ? sender.toLowerCase() : "");
+        if (sender == null) {
+            return "";
+        }
+
+        int at = sender.indexOf('@');
+        return (at >= 0 ? sender.substring(at + 1) : sender).toLowerCase();
     }
 
     private boolean isWhitelisted(String domain) {
@@ -196,7 +179,7 @@ public class SpamScoringService {
      */
     public Set<String> createNormalizedShingles(String text) {
         List<String> words = Arrays.stream(text.toLowerCase().replaceAll("[^a-z0-9 ]", " ").split("\\s+"))
-                .filter(w -> !STOP_WORDS.contains(w)).filter(w -> !w.isBlank()).collect(Collectors.toList());
+                .filter(w -> !STOP_WORDS.contains(w)).filter(w -> !w.isBlank()).toList();
 
         Set<String> shingles = new HashSet<>();
 
@@ -226,5 +209,27 @@ public class SpamScoringService {
 
     private double saturate(double raw) {
         return 1.0 - Math.exp(-2.5 * raw);
+    }
+
+    private record TextSignals(double patternBoost, double keywordBoost, List<String> flags) {}
+
+    private TextSignals extractSignals(String body) {
+        List<String> flags = new ArrayList<>();
+
+        List<String> matchedPatterns = patternRegistry.matchingPatterns(body);
+        double patternBoost = patternRegistry.totalBoost(body);
+        matchedPatterns.forEach(p -> flags.add("pattern: " + p));
+
+        double keywordBoost = 0.0;
+        String lowerBody = body.toLowerCase();
+
+        for (String kw : listsConfig.getBlacklistWords()) {
+            if (lowerBody.contains(kw.toLowerCase())) {
+                keywordBoost = Math.min(keywordBoost + thresholds.getBlacklistWordBoost(), 1.0);
+                flags.add("keyword: " + kw);
+            }
+        }
+
+        return new TextSignals(patternBoost, keywordBoost, flags);
     }
 }
